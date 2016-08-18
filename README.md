@@ -47,7 +47,7 @@ words. For example I have a root word "kick", but also need the
 entries "kicking", "kicks", etc.
 The Addendums TextView is where I write the endings and click
 the 'Insert' button. The app scans the file to see if the root
-plus the root and the endings already exist in the file. If
+plus the endings already exist in the file. If
 they don't, those entries are automatically created and they
 get added to the root words Search Terms TextView, updating
 the XML.
@@ -85,7 +85,7 @@ Police kicked down the door\.
 ```
 
 The first definition now has two examples. You can have
-as many examples as you want, the just must be on their own
+as many examples as you want, they just must be on their own
 lines.
 
 Notice the backslash before the period. The backslash is
