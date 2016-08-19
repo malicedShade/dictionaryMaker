@@ -2,7 +2,7 @@
 //  Document.m
 //  Dictionary Maker
 //
-//  Created by Alice Florencia Roldán on 8/11/16.
+//  Created by Alice on 8/11/16.
 //
 
 #import "Document.h"
