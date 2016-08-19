@@ -2,7 +2,7 @@
 //  Dictionary_MakerUITests.m
 //  Dictionary MakerUITests
 //
-//  Created by Alice Florencia Roldán on 8/18/16.
+//  Created by Alice on 8/18/16.
 //
 //
 
