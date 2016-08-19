@@ -2,7 +2,7 @@
 //  DMParser.m
 //  Dictionary Maker
 //
-//  Created by Alice Florencia Roldán on 8/14/16.
+//  Created by Alice on 8/14/16.
 //
 
 #import "DMParser.h"
