@@ -15,6 +15,7 @@
 		380D7D031D65B6020019FBF0 /* MainMenu.xib in Resources */ = {isa = PBXBuildFile; fileRef = 380D7D011D65B6020019FBF0 /* MainMenu.xib */; };
 		380D7D0E1D65B6020019FBF0 /* Dictionary_MakerTests.m in Sources */ = {isa = PBXBuildFile; fileRef = 380D7D0D1D65B6020019FBF0 /* Dictionary_MakerTests.m */; };
 		380D7D191D65B6020019FBF0 /* Dictionary_MakerUITests.m in Sources */ = {isa = PBXBuildFile; fileRef = 380D7D181D65B6020019FBF0 /* Dictionary_MakerUITests.m */; };
+		3841CE301D6912C8003BC4C0 /* DMParser.m in Sources */ = {isa = PBXBuildFile; fileRef = 3841CE2F1D6912C8003BC4C0 /* DMParser.m */; };
 /* End PBXBuildFile section */
 
 /* Begin PBXContainerItemProxy section */
@@ -51,6 +52,8 @@
 		380D7D141D65B6020019FBF0 /* Dictionary MakerUITests.xctest */ = {isa = PBXFileReference; explicitFileType = wrapper.cfbundle; includeInIndex = 0; path = "Dictionary MakerUITests.xctest"; sourceTree = BUILT_PRODUCTS_DIR; };
 		380D7D181D65B6020019FBF0 /* Dictionary_MakerUITests.m */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.c.objc; path = Dictionary_MakerUITests.m; sourceTree = "<group>"; };
 		380D7D1A1D65B6020019FBF0 /* Info.plist */ = {isa = PBXFileReference; lastKnownFileType = text.plist.xml; path = Info.plist; sourceTree = "<group>"; };
+		3841CE2E1D6912C8003BC4C0 /* DMParser.h */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.c.h; path = DMParser.h; sourceTree = "<group>"; };
+		3841CE2F1D6912C8003BC4C0 /* DMParser.m */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.c.objc; path = DMParser.m; sourceTree = "<group>"; };
 /* End PBXFileReference section */
 
 /* Begin PBXFrameworksBuildPhase section */
@@ -103,6 +106,8 @@
 			children = (
 				380D7CF31D65B6020019FBF0 /* AppDelegate.h */,
 				380D7CF41D65B6020019FBF0 /* AppDelegate.m */,
+				3841CE2E1D6912C8003BC4C0 /* DMParser.h */,
+				3841CE2F1D6912C8003BC4C0 /* DMParser.m */,
 				380D7CF91D65B6020019FBF0 /* Document.h */,
 				380D7CFA1D65B6020019FBF0 /* Document.m */,
 				380D7CFC1D65B6020019FBF0 /* Document.xib */,
@@ -273,6 +278,7 @@
 				380D7CFB1D65B6020019FBF0 /* Document.m in Sources */,
 				380D7CF81D65B6020019FBF0 /* main.m in Sources */,
 				380D7CF51D65B6020019FBF0 /* AppDelegate.m in Sources */,
+				3841CE301D6912C8003BC4C0 /* DMParser.m in Sources */,
 			);
 			runOnlyForDeploymentPostprocessing = 0;
 		};
@@ -501,6 +507,7 @@
 				380D7D1F1D65B6020019FBF0 /* Release */,
 			);
 			defaultConfigurationIsVisible = 0;
+			defaultConfigurationName = Release;
 		};
 		380D7D201D65B6020019FBF0 /* Build configuration list for PBXNativeTarget "Dictionary MakerTests" */ = {
 			isa = XCConfigurationList;
@@ -509,6 +516,7 @@
 				380D7D221D65B6020019FBF0 /* Release */,
 			);
 			defaultConfigurationIsVisible = 0;
+			defaultConfigurationName = Release;
 		};
 		380D7D231D65B6020019FBF0 /* Build configuration list for PBXNativeTarget "Dictionary MakerUITests" */ = {
 			isa = XCConfigurationList;
@@ -517,6 +525,7 @@
 				380D7D251D65B6020019FBF0 /* Release */,
 			);
 			defaultConfigurationIsVisible = 0;
+			defaultConfigurationName = Release;
 		};
 /* End XCConfigurationList section */
 	};

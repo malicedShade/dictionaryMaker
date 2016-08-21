@@ -44,15 +44,38 @@
 			}
 			case DMSearchTermsParsing:
 			{
-				NSArray *separatedComponents = [stringToParse componentsSeparatedByString:@"\n"];
+				NSMutableArray *separatedComponents = [[NSMutableArray alloc] initWithArray:[stringToParse componentsSeparatedByString:@"\n"]];
+				NSMutableIndexSet *removalIndecies = [[NSMutableIndexSet alloc] init];
 				
-				for(NSInteger i = 0; i < separatedComponents.count; i++)
+				// Check to see if there are empty strings.
+				if(separatedComponents.count > 0)
 				{
-					NSXMLElement *index = [NSXMLElement elementWithName:@"d:index"];
-					NSXMLNode *valueAttribute = [NSXMLNode attributeWithName:@"d:value" stringValue:[separatedComponents objectAtIndex:i]];
+					for(NSInteger i = 0; i < separatedComponents.count; i++)
+					{
+						NSString *currentString = [separatedComponents objectAtIndex:i];
+						
+						if([currentString isEqualToString:@""])
+						{
+							[removalIndecies addIndex:i];
+						}
+					}
 					
-					[index addAttribute:valueAttribute];
-					[newElements addObject:index];
+					if(removalIndecies.count > 0)
+					{
+						[separatedComponents removeObjectsAtIndexes:removalIndecies];
+					}
+					
+					if(separatedComponents.count > 0)
+					{
+						for(NSInteger i = 0; i < separatedComponents.count; i++)
+						{
+							NSXMLElement *newIndex = [NSXMLElement elementWithName:@"d:index"];
+							NSXMLNode *value = [NSXMLNode attributeWithName:@"d:value" stringValue:[separatedComponents objectAtIndex:i]];
+							
+							[newIndex addAttribute:value];
+							[newElements addObject:newIndex];
+						}
+					}
 				}
 				
 				break;

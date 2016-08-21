@@ -11,6 +11,7 @@
 
 @property (strong) NSXMLNode *namespace;
 @property (strong) NSXMLNode *namespaceDTD;
+@property NSInteger selectionIndex;
 
 @end
 
@@ -38,6 +39,7 @@
 		
 		[_theXMLDocument setVersion:@"1.0"];
 		[_theXMLDocument setCharacterEncoding:@"UTF-8"];
+		[self setSelectionIndex:-1];
 		NSLog(@"%@", [_theXMLDocument XMLStringWithOptions:NSXMLNodePrettyPrint]);
     }
 	
@@ -133,9 +135,11 @@
 {
 	NSArray *entries = [_theXMLDocument.rootElement elementsForName:@"d:entry"];
 	
-	if(entries.count > 0 && _entryTable.selectedRow >= 0)
+	[self setSelectionIndex:_entryTable.selectedRow];
+	
+	if(entries.count > 0 && _selectionIndex >= 0)
 	{
-		NSXMLElement *currentEntry = [entries objectAtIndex:_entryTable.selectedRow];
+		NSXMLElement *currentEntry = [entries objectAtIndex:_selectionIndex];
 		NSString *word = [currentEntry attributeForName:@"d:title"].stringValue;
 		NSArray *indexArray = [currentEntry elementsForName:@"d:index"];
 		NSMutableString *searchTerms = [[NSMutableString alloc] init];
@@ -249,7 +253,7 @@
 	{
 		if(_wordField == [obj object])
 		{
-			NSXMLElement *currentEntry = [entries objectAtIndex:_entryTable.selectedRow];
+			NSXMLElement *currentEntry = [entries objectAtIndex:_selectionIndex];
 			NSXMLNode *idAttribute = [currentEntry attributeForName:@"id"];
 			NSXMLNode *title = [currentEntry attributeForName:@"d:title"];
 			
@@ -285,9 +289,27 @@
 		
 		if(isCorrect == YES)
 		{
-			[_searchTermsTextView setTextColor:[NSColor blackColor] range:NSMakeRange(0, _pronunciationTextView.textStorage.length)];
+			[_searchTermsTextView setTextColor:[NSColor blackColor] range:NSMakeRange(0, _searchTermsTextView.textStorage.length)];
 			
-			//NSArray *newSpans = [_parser elementsByParsingString:_searchTermsTextView.textStorage.string usingMode:DMSearchTermsParsing];
+			NSArray *newIndecies = [_parser elementsByParsingString:[_searchTermsTextView.textStorage.string copy]
+														  usingMode:DMSearchTermsParsing];
+			NSXMLElement *currentEntry = [[_theXMLDocument.rootElement elementsForName:@"d:entry"] objectAtIndex:_selectionIndex];
+			NSArray *oldIndecies = [currentEntry elementsForName:@"d:index"];
+			
+			if(oldIndecies.count > 0)
+			{
+				for(NSInteger i = 0; i < oldIndecies.count; i++)
+				{
+					NSUInteger oldIndexIndex = [[oldIndecies objectAtIndex:i] index];
+					
+					[currentEntry removeChildAtIndex:oldIndexIndex];
+				}
+			}
+			
+			if(newIndecies.count != 0)
+			{
+				[currentEntry insertChildren:newIndecies atIndex:0];
+			}
 		}
 		else
 		{
@@ -319,7 +341,7 @@
 			
 			NSArray *elements = [_parser elementsByParsingString:_definitionsTextView.textStorage.string usingMode:DMDefinitionsParsing];
 			NSXMLElement *newDiv = elements.firstObject;
-			NSXMLElement *currentEntry = [[_theXMLDocument.rootElement elementsForName:@"d:entry"] objectAtIndex:_entryTable.selectedRow];
+			NSXMLElement *currentEntry = [[_theXMLDocument.rootElement elementsForName:@"d:entry"] objectAtIndex:_selectionIndex];
 			NSInteger oldDivIndex = [[currentEntry elementsForName:@"div"].firstObject index];
 			
 			[currentEntry replaceChildAtIndex:oldDivIndex withNode:newDiv];
@@ -337,13 +359,13 @@
 
 - (IBAction)removeCurrentEntry:(id)sender
 {
-	if(_entryTable.selectedRow == -1)
+	if(_selectionIndex == -1)
 	{
 		NSBeep();
 	}
 	else
 	{
-		[_theXMLDocument.rootElement removeChildAtIndex:_entryTable.selectedRow];
+		[_theXMLDocument.rootElement removeChildAtIndex:_selectionIndex];
 	}
 	
 	NSLog(@"%@", [_theXMLDocument XMLStringWithOptions:NSXMLNodePrettyPrint]);
@@ -358,6 +380,7 @@
 	NSXMLNode *tempID = [NSXMLNode attributeWithName:@"id" stringValue:tempIDValue];
 	NSXMLNode *tempTitle = [NSXMLNode attributeWithName:@"d:title" stringValue:tempIDValue];
 	NSXMLElement *index = [NSXMLElement elementWithName:@"d:index"];
+	NSXMLNode *indexValue = [NSXMLNode attributeWithName:@"d:value" stringValue:tempIDValue];
 	NSXMLElement *pronunciationSpan = [NSXMLElement elementWithName:@"span"];
 	NSXMLNode *classSpan = [NSXMLNode attributeWithName:@"class" stringValue:@"syntax"];
 	NSXMLElement *div = [NSXMLElement elementWithName:@"div"];
@@ -366,6 +389,7 @@
 	
 	[entry addAttribute:tempID];
 	[entry addAttribute:tempTitle];
+	[index addAttribute:indexValue];
 	[entry addChild:index];
 	[pronunciationSpan addAttribute:classSpan];
 	[entry addChild:pronunciationSpan];
@@ -373,13 +397,13 @@
 	[div addChild:orderedList];
 	[entry addChild:div];
 	
-	if(_entryTable.selectedRow == -1)
+	if(_selectionIndex == -1)
 	{
 		[_theXMLDocument.rootElement addChild:entry];
 	}
 	else
 	{
-		[_theXMLDocument.rootElement insertChild:entry atIndex:(_entryTable.selectedRow + 1)];
+		[_theXMLDocument.rootElement insertChild:entry atIndex:(_selectionIndex + 1)];
 	}
 	
 	NSLog(@"%@", [_theXMLDocument XMLStringWithOptions:NSXMLNodePrettyPrint]);
@@ -434,13 +458,13 @@
 			[div addChild:orderedList];
 			[entry addChild:div];
 			
-			if(_entryTable.selectedRow == -1)
+			if(_selectionIndex == -1)
 			{
 				[_theXMLDocument.rootElement addChild:entry];
 			}
 			else
 			{
-				[_theXMLDocument.rootElement insertChild:entry atIndex:(_entryTable.selectedRow + 1)];
+				[_theXMLDocument.rootElement insertChild:entry atIndex:(_selectionIndex + 1)];
 			}
 			
 			[_entryTable reloadData];
