@@ -259,6 +259,7 @@
 		}
 		case DMAddendumsType:
 		{
+			stringIsCorrect = YES;
 			break;
 		}
 		case DMDefinitionsType:

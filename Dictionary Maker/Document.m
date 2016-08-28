@@ -80,7 +80,7 @@
 	
 	[_entryTable reloadData];
 	
-	// REMEMBER TO BREAK UNDO STUFF.
+	// Disable undo registration.
 	
 	if(!saveFile && outError)
 	{
@@ -113,6 +113,7 @@
 	{
 		readSuccess = YES;
 		[self setTheXMLDocument:fileContents];
+		[self applyXMLToUI];
 	}
 	
 	return readSuccess;
@@ -133,9 +134,191 @@
 
 - (void)tableViewSelectionDidChange:(NSNotification *)notification
 {
+	[self setSelectionIndex:_entryTable.selectedRow];
+	[self applyXMLToUI];
+}
+
+#pragma mark - NSTableViewDataSource
+
+- (NSInteger)numberOfRowsInTableView:(NSTableView *)tableView
+{
+	return [_theXMLDocument.rootElement elementsForName:@"d:entry"].count;
+}
+
+#pragma mark - NSTextFieldDelegate
+
+- (BOOL)control:(NSControl *)control textShouldEndEditing:(NSText *)fieldEditor
+{
+	BOOL shouldEnd = NO;
+	
+	if(control == _wordField)
+	{
+		if(![_wordField.stringValue isEqualToString:@""])
+		{
+			NSArray *entries = [_theXMLDocument.rootElement elementsForName:@"d:entry"];
+			NSMutableArray *words = [[NSMutableArray alloc] init];
+			BOOL duplicatesExist = NO;
+			
+			for(NSInteger i = 0; i < entries.count; i++)
+			{
+				NSXMLElement *currentEntry = [entries objectAtIndex:i];
+				
+				[words addObject:[currentEntry attributeForName:@"id"].stringValue];
+			}
+			
+			for(NSInteger i = 0; i < words.count; i++)
+			{
+				NSString *currentWord = [words objectAtIndex:i];
+				
+				if([currentWord isEqualToString:_wordField.stringValue])
+				{
+					duplicatesExist = YES;
+				}
+			}
+			
+			if(duplicatesExist == NO)
+			{
+				shouldEnd = YES;
+			}
+		}
+		else
+		{
+			shouldEnd = NO;
+			NSAlert *emptyWordAlert = [[NSAlert alloc] init];
+			
+			[emptyWordAlert addButtonWithTitle:@"OK"];
+			[emptyWordAlert setMessageText:@"Words cannot be empty."];
+			[emptyWordAlert setInformativeText:@"Please provide a value for this word."];
+			[emptyWordAlert setAlertStyle:NSWarningAlertStyle];
+			[emptyWordAlert runModal];
+		}
+	}
+	
+	return shouldEnd;
+}
+
+- (void)controlTextDidEndEditing:(NSNotification *)obj
+{
+	[self.undoManager registerUndoWithTarget:self selector:@selector(updateDocument:) object:[_theXMLDocument copy]];
+	[self.undoManager setActionName:@"Edit"];
+	
 	NSArray *entries = [_theXMLDocument.rootElement elementsForName:@"d:entry"];
 	
-	[self setSelectionIndex:_entryTable.selectedRow];
+	if(entries.count > 0)
+	{
+		if(_wordField == [obj object])
+		{
+			NSXMLElement *currentEntry = [entries objectAtIndex:_selectionIndex];
+			NSXMLNode *idAttribute = [currentEntry attributeForName:@"id"];
+			NSXMLNode *title = [currentEntry attributeForName:@"d:title"];
+			
+			[idAttribute setStringValue:_wordField.stringValue];
+			[title setStringValue:_wordField.stringValue];
+			[_entryTable reloadData];
+		}
+	}
+}
+
+# pragma mark - NSTextDelegate
+
+- (void)textDidChange:(NSNotification *)notification
+{
+	[self.undoManager registerUndoWithTarget:self selector:@selector(updateDocument:) object:[_theXMLDocument copy]];
+	[self.undoManager setActionName:@"Edit"];
+	
+	if([notification object] == _pronunciationTextView)
+	{
+		BOOL isCorrect = [_parser checkDataStringSymantics:_pronunciationTextView.textStorage.string ofType:DMPronunciationType error:nil];
+		
+		if(isCorrect == YES)
+		{
+			[_pronunciationTextView setTextColor:[NSColor blackColor] range:NSMakeRange(0, _pronunciationTextView.textStorage.length)];
+			
+			//NSArray *newSpans = [_parser elementsByParsingString:_pronunciationTextView.textStorage.string usingMode:DMPronunciationParsing];
+		}
+		else
+		{
+			[_pronunciationTextView setTextColor:[NSColor redColor] range:NSMakeRange(0, _pronunciationTextView.textStorage.length)];
+		}
+	}
+	else if([notification object] == _searchTermsTextView)
+	{
+		BOOL isCorrect = [_parser checkDataStringSymantics:_searchTermsTextView.textStorage.string ofType:DMSearchTermsType error:nil];
+		
+		if(isCorrect == YES)
+		{
+			[_searchTermsTextView setTextColor:[NSColor blackColor] range:NSMakeRange(0, _searchTermsTextView.textStorage.length)];
+			
+			NSArray *newIndecies = [_parser elementsByParsingString:[_searchTermsTextView.textStorage.string copy]
+														  usingMode:DMSearchTermsParsing];
+			NSXMLElement *currentEntry = [[_theXMLDocument.rootElement elementsForName:@"d:entry"] objectAtIndex:_selectionIndex];
+			NSArray *oldIndecies = [currentEntry elementsForName:@"d:index"];
+			
+			if(oldIndecies.count > 0)
+			{
+				for(NSInteger i = 0; i < oldIndecies.count; i++)
+				{
+					NSUInteger oldIndexIndex = [[oldIndecies objectAtIndex:i] index];
+					
+					[currentEntry removeChildAtIndex:oldIndexIndex];
+				}
+			}
+			
+			if(newIndecies.count != 0)
+			{
+				[currentEntry insertChildren:newIndecies atIndex:0];
+			}
+		}
+		else
+		{
+			[_searchTermsTextView setTextColor:[NSColor redColor] range:NSMakeRange(0, _searchTermsTextView.textStorage.length)];
+		}
+	}
+	else if([notification object] == _addendumsTextView)
+	{
+		BOOL isCorrect = [_parser checkDataStringSymantics:_addendumsTextView.textStorage.string ofType:DMAddendumsType error:nil];
+		
+		if(isCorrect == YES)
+		{
+			[_addendumsTextView setTextColor:[NSColor blackColor] range:NSMakeRange(0, _addendumsTextView.textStorage.length)];
+			
+			//NSArray *newSpans = [_parser elementsByParsingString:_addendumsTextView.textStorage.string usingMode:DMAddendumsParsing];
+		}
+		else
+		{
+			[_addendumsTextView setTextColor:[NSColor redColor] range:NSMakeRange(0, _addendumsTextView.textStorage.length)];
+		}
+	}
+	else if([notification object] == _definitionsTextView)
+	{
+		BOOL isCorrect = [_parser checkDataStringSymantics:_definitionsTextView.textStorage.string ofType:DMDefinitionsType error:nil];
+		
+		if(isCorrect == YES)
+		{
+			[_definitionsTextView setTextColor:[NSColor blackColor] range:NSMakeRange(0, _definitionsTextView.textStorage.length)];
+			
+			NSArray *elements = [_parser elementsByParsingString:_definitionsTextView.textStorage.string usingMode:DMDefinitionsParsing];
+			NSXMLElement *newDiv = elements.firstObject;
+			NSXMLElement *currentEntry = [[_theXMLDocument.rootElement elementsForName:@"d:entry"] objectAtIndex:_selectionIndex];
+			NSInteger oldDivIndex = [[currentEntry elementsForName:@"div"].firstObject index];
+			
+			[currentEntry replaceChildAtIndex:oldDivIndex withNode:newDiv];
+		}
+		else
+		{
+			[_definitionsTextView setTextColor:[NSColor redColor] range:NSMakeRange(0, _definitionsTextView.textStorage.length)];
+		}
+	}
+	
+	NSLog(@"%@", [_theXMLDocument XMLStringWithOptions:NSXMLNodePrettyPrint]);
+}
+
+#pragma mark - Actions
+
+/// Gets values from the XML and updates the interface.
+- (void)applyXMLToUI
+{
+	NSArray *entries = [_theXMLDocument.rootElement elementsForName:@"d:entry"];
 	
 	if(entries.count > 0 && _selectionIndex >= 0)
 	{
@@ -236,129 +419,11 @@
 	}
 }
 
-#pragma mark - NSTableViewDataSource
-
-- (NSInteger)numberOfRowsInTableView:(NSTableView *)tableView
-{
-	return [_theXMLDocument.rootElement elementsForName:@"d:entry"].count;
-}
-
-#pragma mark - NSTextFieldDelegate
-
-- (void)controlTextDidEndEditing:(NSNotification *)obj
-{
-	NSArray *entries = [_theXMLDocument.rootElement elementsForName:@"d:entry"];
-	
-	if(entries.count > 0)
-	{
-		if(_wordField == [obj object])
-		{
-			NSXMLElement *currentEntry = [entries objectAtIndex:_selectionIndex];
-			NSXMLNode *idAttribute = [currentEntry attributeForName:@"id"];
-			NSXMLNode *title = [currentEntry attributeForName:@"d:title"];
-			
-			[idAttribute setStringValue:_wordField.stringValue];
-			[title setStringValue:_wordField.stringValue];
-			[_entryTable reloadData];
-		}
-	}
-}
-
-# pragma mark - NSTextDelegate
-
-- (void)textDidChange:(NSNotification *)notification
-{
-	if([notification object] == _pronunciationTextView)
-	{
-		BOOL isCorrect = [_parser checkDataStringSymantics:_pronunciationTextView.textStorage.string ofType:DMPronunciationType error:nil];
-		
-		if(isCorrect == YES)
-		{
-			[_pronunciationTextView setTextColor:[NSColor blackColor] range:NSMakeRange(0, _pronunciationTextView.textStorage.length)];
-			
-			//NSArray *newSpans = [_parser elementsByParsingString:_pronunciationTextView.textStorage.string usingMode:DMPronunciationParsing];
-		}
-		else
-		{
-			[_pronunciationTextView setTextColor:[NSColor redColor] range:NSMakeRange(0, _pronunciationTextView.textStorage.length)];
-		}
-	}
-	else if([notification object] == _searchTermsTextView)
-	{
-		BOOL isCorrect = [_parser checkDataStringSymantics:_searchTermsTextView.textStorage.string ofType:DMSearchTermsType error:nil];
-		
-		if(isCorrect == YES)
-		{
-			[_searchTermsTextView setTextColor:[NSColor blackColor] range:NSMakeRange(0, _searchTermsTextView.textStorage.length)];
-			
-			NSArray *newIndecies = [_parser elementsByParsingString:[_searchTermsTextView.textStorage.string copy]
-														  usingMode:DMSearchTermsParsing];
-			NSXMLElement *currentEntry = [[_theXMLDocument.rootElement elementsForName:@"d:entry"] objectAtIndex:_selectionIndex];
-			NSArray *oldIndecies = [currentEntry elementsForName:@"d:index"];
-			
-			if(oldIndecies.count > 0)
-			{
-				for(NSInteger i = 0; i < oldIndecies.count; i++)
-				{
-					NSUInteger oldIndexIndex = [[oldIndecies objectAtIndex:i] index];
-					
-					[currentEntry removeChildAtIndex:oldIndexIndex];
-				}
-			}
-			
-			if(newIndecies.count != 0)
-			{
-				[currentEntry insertChildren:newIndecies atIndex:0];
-			}
-		}
-		else
-		{
-			[_searchTermsTextView setTextColor:[NSColor redColor] range:NSMakeRange(0, _searchTermsTextView.textStorage.length)];
-		}
-	}
-	else if([notification object] == _addendumsTextView)
-	{
-		BOOL isCorrect = [_parser checkDataStringSymantics:_addendumsTextView.textStorage.string ofType:DMAddendumsType error:nil];
-		
-		if(isCorrect == YES)
-		{
-			[_addendumsTextView setTextColor:[NSColor blackColor] range:NSMakeRange(0, _addendumsTextView.textStorage.length)];
-			
-			//NSArray *newSpans = [_parser elementsByParsingString:_addendumsTextView.textStorage.string usingMode:DMAddendumsParsing];
-		}
-		else
-		{
-			[_addendumsTextView setTextColor:[NSColor redColor] range:NSMakeRange(0, _addendumsTextView.textStorage.length)];
-		}
-	}
-	else if([notification object] == _definitionsTextView)
-	{
-		BOOL isCorrect = [_parser checkDataStringSymantics:_definitionsTextView.textStorage.string ofType:DMDefinitionsType error:nil];
-		
-		if(isCorrect == YES)
-		{
-			[_definitionsTextView setTextColor:[NSColor blackColor] range:NSMakeRange(0, _definitionsTextView.textStorage.length)];
-			
-			NSArray *elements = [_parser elementsByParsingString:_definitionsTextView.textStorage.string usingMode:DMDefinitionsParsing];
-			NSXMLElement *newDiv = elements.firstObject;
-			NSXMLElement *currentEntry = [[_theXMLDocument.rootElement elementsForName:@"d:entry"] objectAtIndex:_selectionIndex];
-			NSInteger oldDivIndex = [[currentEntry elementsForName:@"div"].firstObject index];
-			
-			[currentEntry replaceChildAtIndex:oldDivIndex withNode:newDiv];
-		}
-		else
-		{
-			[_definitionsTextView setTextColor:[NSColor redColor] range:NSMakeRange(0, _definitionsTextView.textStorage.length)];
-		}
-	}
-	
-	NSLog(@"%@", [_theXMLDocument XMLStringWithOptions:NSXMLNodePrettyPrint]);
-}
-
-#pragma mark - Actions
-
 - (IBAction)removeCurrentEntry:(id)sender
 {
+	[self.undoManager registerUndoWithTarget:self selector:@selector(updateDocument:) object:[_theXMLDocument copy]];
+	[self.undoManager setActionName:@"Edit"];
+	
 	if(_selectionIndex == -1)
 	{
 		NSBeep();
@@ -374,49 +439,78 @@
 
 - (IBAction)addNewEntry:(id)sender
 {
-	NSInteger entryCount = [_theXMLDocument.rootElement elementsForName:@"d:entry"].count;
-	NSXMLElement *entry = [NSXMLElement elementWithName:@"d:entry"];
-	NSString *tempIDValue = [NSString stringWithFormat:@"%li", (long)entryCount];
-	NSXMLNode *tempID = [NSXMLNode attributeWithName:@"id" stringValue:tempIDValue];
-	NSXMLNode *tempTitle = [NSXMLNode attributeWithName:@"d:title" stringValue:tempIDValue];
-	NSXMLElement *index = [NSXMLElement elementWithName:@"d:index"];
-	NSXMLNode *indexValue = [NSXMLNode attributeWithName:@"d:value" stringValue:tempIDValue];
-	NSXMLElement *pronunciationSpan = [NSXMLElement elementWithName:@"span"];
-	NSXMLNode *classSpan = [NSXMLNode attributeWithName:@"class" stringValue:@"syntax"];
-	NSXMLElement *div = [NSXMLElement elementWithName:@"div"];
-	NSXMLElement *orderedList = [NSXMLElement elementWithName:@"ol"];
-	NSXMLElement *listItem = [NSXMLElement elementWithName:@"li"];
-	
-	[entry addAttribute:tempID];
-	[entry addAttribute:tempTitle];
-	[index addAttribute:indexValue];
-	[entry addChild:index];
-	[pronunciationSpan addAttribute:classSpan];
-	[entry addChild:pronunciationSpan];
-	[orderedList addChild:listItem];
-	[div addChild:orderedList];
-	[entry addChild:div];
-	
-	if(_selectionIndex == -1)
-	{
-		[_theXMLDocument.rootElement addChild:entry];
-	}
-	else
-	{
-		[_theXMLDocument.rootElement insertChild:entry atIndex:(_selectionIndex + 1)];
-	}
-	
-	NSLog(@"%@", [_theXMLDocument XMLStringWithOptions:NSXMLNodePrettyPrint]);
-	[_entryTable reloadData];
+	[self createNewEntry:@""];
 }
 
 - (IBAction)insertAddendums:(id)sender
 {
+	[self.undoManager registerUndoWithTarget:self selector:@selector(updateDocument:) object:[_theXMLDocument copy]];
+	[self.undoManager setActionName:@"Edit"];
 	
+	NSString *word = _wordField.stringValue;
+	
+	if(![word isEqualToString:@""])
+	{
+		NSArray *suffixes = [_addendumsTextView.textStorage.string componentsSeparatedByCharactersInSet:[NSCharacterSet newlineCharacterSet]];
+		NSArray *entries = [_theXMLDocument.rootElement elementsForName:@"d:entry"];
+		NSMutableArray *words = [[NSMutableArray alloc] init];
+		NSMutableArray *newWords = [[NSMutableArray alloc] init];
+		
+		// Create the wordlist.
+		for(NSInteger i = 0; i < entries.count; i++)
+		{
+			NSXMLElement *currentEntry = [entries objectAtIndex:i];
+			
+			[words addObject:[currentEntry attributeForName:@"id"].stringValue];
+		}
+		
+		// Assemble the new words.
+		for(NSInteger i = 0; i < suffixes.count; i++)
+		{
+			NSMutableString *newWord = [[NSMutableString alloc] init];
+			NSString *currentSuffix = [suffixes objectAtIndex:i];
+			
+			if(![currentSuffix isEqualToString:@""])
+			{
+				[newWord appendString:word];
+				[newWord appendString:currentSuffix];
+			}
+			
+			if(![newWord isEqualToString:@""])
+			{
+				[newWords addObject:newWord];
+			}
+		}
+		
+		// Search for the words; If they don't exist then add them to the document.
+		for(NSInteger i = 0; i < newWords.count; i++)
+		{
+			NSString *currentNewWord = [newWords objectAtIndex:i];
+			NSInteger copies = 0;
+			
+			for(NSInteger x = 0; x < words.count; x++)
+			{
+				NSString *currentOldWord = [words objectAtIndex:x];
+				
+				if([currentNewWord isEqualToString:currentOldWord])
+				{
+					copies++;
+				}
+			}
+			
+			if(copies == 0)
+			{
+				[self createNewEntry:currentNewWord];
+			}
+		}
+	}
 }
 
 - (IBAction)importFile:(id)sender
 {
+	[self.undoManager registerUndoWithTarget:self selector:@selector(updateDocument:) object:[_theXMLDocument copy]];
+	[self.undoManager setActionName:@"Edit"];
+	
 	NSOpenPanel *openPanel = [NSOpenPanel openPanel];
 	NSArray *allowedFileTypes = [[NSArray alloc] initWithObjects:@"public.text", nil];
 	
@@ -472,6 +566,65 @@
 	}
 	
 	NSLog(@"%@", [_theXMLDocument XMLStringWithOptions:NSXMLNodePrettyPrint]);
+}
+
+- (void)createNewEntry:(NSString *)word
+{
+	[self.undoManager registerUndoWithTarget:self selector:@selector(updateDocument:) object:[_theXMLDocument copy]];
+	[self.undoManager setActionName:@"Edit"];
+	
+	NSString *tempIDValue;
+	
+	if([word isEqualToString:@""])
+	{
+		tempIDValue = [NSString stringWithFormat:@"%li", (long)[_theXMLDocument.rootElement elementsForName:@"d:entry"].count];
+	}
+	else
+	{
+		tempIDValue = word;
+	}
+	
+	NSXMLElement *entry = [NSXMLElement elementWithName:@"d:entry"];
+	NSXMLNode *tempID = [NSXMLNode attributeWithName:@"id" stringValue:tempIDValue];
+	NSXMLNode *tempTitle = [NSXMLNode attributeWithName:@"d:title" stringValue:tempIDValue];
+	NSXMLElement *index = [NSXMLElement elementWithName:@"d:index"];
+	NSXMLNode *indexValue = [NSXMLNode attributeWithName:@"d:value" stringValue:tempIDValue];
+	NSXMLElement *pronunciationSpan = [NSXMLElement elementWithName:@"span"];
+	NSXMLNode *classSpan = [NSXMLNode attributeWithName:@"class" stringValue:@"syntax"];
+	NSXMLElement *div = [NSXMLElement elementWithName:@"div"];
+	NSXMLElement *orderedList = [NSXMLElement elementWithName:@"ol"];
+	NSXMLElement *listItem = [NSXMLElement elementWithName:@"li"];
+	
+	[entry addAttribute:tempID];
+	[entry addAttribute:tempTitle];
+	[index addAttribute:indexValue];
+	[entry addChild:index];
+	[pronunciationSpan addAttribute:classSpan];
+	[entry addChild:pronunciationSpan];
+	[orderedList addChild:listItem];
+	[div addChild:orderedList];
+	[entry addChild:div];
+	
+	if(_selectionIndex == -1)
+	{
+		[_theXMLDocument.rootElement addChild:entry];
+	}
+	else
+	{
+		[_theXMLDocument.rootElement insertChild:entry atIndex:(_selectionIndex + 1)];
+	}
+	
+	NSLog(@"%@", [_theXMLDocument XMLStringWithOptions:NSXMLNodePrettyPrint]);
+	[_entryTable reloadData];
+}
+
+- (void)updateDocument:(NSXMLDocument *)xml
+{
+	[self.undoManager registerUndoWithTarget:self selector:@selector(updateDocument:) object:[_theXMLDocument copy]];
+	[self.undoManager setActionName:@"Edit"];
+	[self setTheXMLDocument:xml];
+	[_entryTable reloadData];
+	[self applyXMLToUI];
 }
 
 @end
